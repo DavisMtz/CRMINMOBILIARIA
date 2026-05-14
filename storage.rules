@@ -1,0 +1,35 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Avatares: el usuario solo puede leer/escribir su propio avatar
+    match /avatars/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024          // máx 5 MB
+        && request.resource.contentType.matches('image/.*'); // solo imágenes
+    }
+
+    // Fotos de propiedades: el asesor dueño puede subir y leer
+    match /properties/{advisorId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == advisorId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Documentos (contratos, etc.)
+    match /documents/{advisorId}/{fileName} {
+      allow read, write: if request.auth != null
+        && request.auth.uid == advisorId
+        && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    // Deniega cualquier otro acceso
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

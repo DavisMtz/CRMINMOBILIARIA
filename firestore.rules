@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuarios: solo el propio usuario puede leer/escribir su documento
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Clientes: solo el asesor dueño puede acceder
+    match /clients/{clientId} {
+      allow read, write: if request.auth != null
+        && resource.data.advisorId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.advisorId == request.auth.uid;
+    }
+
+    // Propiedades: solo el asesor dueño puede acceder
+    match /properties/{propertyId} {
+      allow read, write: if request.auth != null
+        && resource.data.advisorId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.advisorId == request.auth.uid;
+    }
+
+    // Actividades (timeline): solo el asesor dueño
+    match /activities/{activityId} {
+      allow read, write: if request.auth != null
+        && resource.data.advisorId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.advisorId == request.auth.uid;
+    }
+
+    // Deniega cualquier otro acceso
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
