@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDropzone } from "react-dropzone";
 import { useForm } from "react-hook-form";
@@ -9,13 +9,22 @@ import { db, storage } from "../../firebase/config";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import toast from "react-hot-toast";
-import { User, Phone, Building2, MapPin, Briefcase, Upload, Check } from "lucide-react";
+import { User, Phone, Building2, MapPin, Briefcase, Upload, Check, Search } from "lucide-react";
 import styles from "./OnboardingPage.module.css";
 
+const BUSINESSES = [
+  {
+    id: "activos-inmobiliarios-globales",
+    name: "Activos Inmobiliarios Globales",
+    description: "Gestión integral de activos inmobiliarios",
+  },
+];
+
 const STEPS = [
-  { id: 1, label: "Foto de perfil", icon: <Upload size={16} /> },
-  { id: 2, label: "Datos personales", icon: <User size={16} /> },
-  { id: 3, label: "Datos profesionales", icon: <Briefcase size={16} /> },
+  { id: 1, label: "Negocio", icon: <Building2 size={16} /> },
+  { id: 2, label: "Foto de perfil", icon: <Upload size={16} /> },
+  { id: 3, label: "Datos personales", icon: <User size={16} /> },
+  { id: 4, label: "Datos profesionales", icon: <Briefcase size={16} /> },
 ];
 
 const ZONES = [
@@ -35,6 +44,14 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(user?.photoURL ?? null);
+  const [selectedBusiness, setSelectedBusiness] = useState(null);
+  const [businessSearch, setBusinessSearch] = useState("");
+
+  const filteredBusinesses = useMemo(() => {
+    const q = businessSearch.trim().toLowerCase();
+    if (!q) return BUSINESSES;
+    return BUSINESSES.filter((b) => b.name.toLowerCase().includes(q) || b.description.toLowerCase().includes(q));
+  }, [businessSearch]);
 
   const { register, handleSubmit, formState: { errors }, getValues } = useForm({
     defaultValues: {
@@ -69,9 +86,14 @@ export default function OnboardingPage() {
   const prev = () => setStep((s) => Math.max(s - 1, 1));
 
   const onSubmit = async (data) => {
+    if (!selectedBusiness) {
+      toast.error("Selecciona un negocio para continuar");
+      setStep(1);
+      return;
+    }
     if (!avatarFile && !user?.photoURL) {
       toast.error("Por favor sube una foto de perfil");
-      setStep(1);
+      setStep(2);
       return;
     }
     setSaving(true);
@@ -97,6 +119,8 @@ export default function OnboardingPage() {
         specialty: data.specialty,
         bio: data.bio,
         photoURL,
+        businessId: selectedBusiness.id,
+        businessName: selectedBusiness.name,
         role: "advisor",
         onboardingCompleted: true,
         createdAt: serverTimestamp(),
@@ -139,8 +163,61 @@ export default function OnboardingPage() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-          {/* ── STEP 1: Foto ── */}
+          {/* ── STEP 1: Negocio ── */}
           {step === 1 && (
+            <div className={styles.stepContent}>
+              <h2 className={styles.stepTitle}>Selecciona tu negocio</h2>
+              <p className={styles.stepDesc}>Elige el negocio al que perteneces para personalizar tu experiencia en el CRM.</p>
+
+              <div className={styles.searchWrap}>
+                <Search size={16} className={styles.searchIcon} />
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Buscar negocio..."
+                  value={businessSearch}
+                  onChange={(e) => setBusinessSearch(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.businessList}>
+                {filteredBusinesses.map((b) => (
+                  <div
+                    key={b.id}
+                    className={[styles.businessItem, selectedBusiness?.id === b.id ? styles.businessSelected : ""].join(" ")}
+                    onClick={() => setSelectedBusiness(b)}
+                  >
+                    <div className={styles.businessIcon}>
+                      <Building2 size={20} />
+                    </div>
+                    <div className={styles.businessInfo}>
+                      <span className={styles.businessName}>{b.name}</span>
+                      {b.description && <span className={styles.businessDesc}>{b.description}</span>}
+                    </div>
+                    {selectedBusiness?.id === b.id && <Check size={16} className={styles.businessCheck} />}
+                  </div>
+                ))}
+                {filteredBusinesses.length === 0 && (
+                  <p className={styles.noResults}>No se encontraron negocios</p>
+                )}
+              </div>
+
+              <div className={styles.actions}>
+                <Button
+                  type="button"
+                  size="lg"
+                  fullWidth
+                  disabled={!selectedBusiness}
+                  onClick={next}
+                >
+                  Continuar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 2: Foto ── */}
+          {step === 2 && (
             <div className={styles.stepContent}>
               <h2 className={styles.stepTitle}>Foto de perfil</h2>
               <p className={styles.stepDesc}>Tu foto genera confianza con los clientes. Usa una foto profesional.</p>
@@ -168,15 +245,16 @@ export default function OnboardingPage() {
               </div>
 
               <div className={styles.actions}>
-                <Button type="button" size="lg" fullWidth onClick={next}>
+                <Button type="button" variant="secondary" size="lg" onClick={prev}>Atrás</Button>
+                <Button type="button" size="lg" onClick={next}>
                   Continuar
                 </Button>
               </div>
             </div>
           )}
 
-          {/* ── STEP 2: Datos personales ── */}
-          {step === 2 && (
+          {/* ── STEP 3: Datos personales ── */}
+          {step === 3 && (
             <div className={styles.stepContent}>
               <h2 className={styles.stepTitle}>Datos personales</h2>
               <p className={styles.stepDesc}>Esta información aparecerá en tu perfil de asesor.</p>
@@ -229,8 +307,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ── STEP 3: Datos profesionales ── */}
-          {step === 3 && (
+          {/* ── STEP 4: Datos profesionales ── */}
+          {step === 4 && (
             <div className={styles.stepContent}>
               <h2 className={styles.stepTitle}>Datos profesionales</h2>
               <p className={styles.stepDesc}>Completa tu perfil de asesor inmobiliario.</p>
