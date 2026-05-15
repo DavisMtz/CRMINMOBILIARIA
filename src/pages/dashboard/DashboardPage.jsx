@@ -1,4 +1,4 @@
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { useGoogleAuth } from "../../hooks/useGoogleAuth";
 import { Users, TrendingUp, Home, Calendar, LogOut, Bell, ChevronDown } from "lucide-react";
 import styles from "./DashboardPage.module.css";

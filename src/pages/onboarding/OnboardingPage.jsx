@@ -4,7 +4,7 @@ import { useDropzone } from "react-dropzone";
 import { useForm } from "react-hook-form";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { db, storage } from "../../firebase/config";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
                   error={errors.phone?.message}
                   {...register("phone", {
                     required: "El teléfono es requerido",
-                    pattern: { value: /^[\d\s\+\-\(\)]{8,15}$/, message: "Teléfono inválido" },
+                    pattern: { value: /^[\d\s+\-()]{8,15}$/, message: "Teléfono inválido" },
                   })}
                 />
                 <Input
